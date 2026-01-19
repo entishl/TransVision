@@ -105,6 +105,136 @@ def write_srt(subtitles: List[Subtitle], output_path: str) -> None:
             f.write(f"{sub.text}\n\n")
 
 
+def parse_vtt(file_path: str) -> List[Subtitle]:
+    """
+    解析 VTT (WebVTT) 字幕文件
+    
+    Args:
+        file_path: VTT 文件路径
+        
+    Returns:
+        字幕列表
+    """
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # 移除 BOM
+    content = content.lstrip('\ufeff')
+    
+    # 检查 WEBVTT 头
+    if not content.strip().startswith('WEBVTT'):
+        raise ValueError("无效的 VTT 文件: 缺少 WEBVTT 头")
+    
+    # 按空行分割块
+    blocks = re.split(r'\n\s*\n', content.strip())
+    subtitles = []
+    index = 0
+    
+    for block in blocks[1:]:  # 跳过 WEBVTT 头块
+        lines = block.strip().split('\n')
+        if not lines:
+            continue
+        
+        # 跳过 STYLE, REGION, NOTE 块
+        first_line = lines[0].strip().upper()
+        if first_line.startswith('STYLE') or first_line.startswith('REGION') or first_line.startswith('NOTE'):
+            continue
+        
+        # 查找时间轴行
+        time_line_idx = 0
+        for i, line in enumerate(lines):
+            if '-->' in line:
+                time_line_idx = i
+                break
+        else:
+            continue  # 没有时间轴，跳过此块
+        
+        # 解析时间轴 (格式: HH:MM:SS.mmm --> HH:MM:SS.mmm 或 MM:SS.mmm --> MM:SS.mmm)
+        time_match = re.match(
+            r'(\d{1,2}:)?\d{2}:\d{2}\.\d{3}\s*-->\s*(\d{1,2}:)?\d{2}:\d{2}\.\d{3}',
+            lines[time_line_idx].strip()
+        )
+        if not time_match:
+            continue
+        
+        # 提取开始和结束时间
+        time_parts = lines[time_line_idx].split('-->')
+        start_vtt = time_parts[0].strip().split()[0]  # 移除可能的 cue settings
+        end_vtt = time_parts[1].strip().split()[0]
+        
+        # 转换为 SRT 格式时间
+        start = _vtt_time_to_srt(start_vtt)
+        end = _vtt_time_to_srt(end_vtt)
+        
+        # 提取文本（时间轴之后的所有行）
+        text = '\n'.join(lines[time_line_idx + 1:])
+        
+        # 移除 VTT 样式标签（如 <c>, <b>, <i> 等）
+        text = re.sub(r'<[^>]+>', '', text)
+        
+        index += 1
+        subtitles.append(Subtitle(
+            index=index,
+            start=start,
+            end=end,
+            text=text
+        ))
+    
+    return subtitles
+
+
+def write_vtt(subtitles: List[Subtitle], output_path: str) -> None:
+    """
+    写出 VTT (WebVTT) 字幕文件
+    
+    Args:
+        subtitles: 字幕列表
+        output_path: 输出文件路径
+    """
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write("WEBVTT\n\n")
+        
+        for sub in subtitles:
+            # 转换时间格式
+            start_vtt = _srt_time_to_vtt(sub.start)
+            end_vtt = _srt_time_to_vtt(sub.end)
+            
+            f.write(f"{sub.index}\n")
+            f.write(f"{start_vtt} --> {end_vtt}\n")
+            f.write(f"{sub.text}\n\n")
+
+
+def _vtt_time_to_srt(vtt_time: str) -> str:
+    """将 VTT 时间格式转换为 SRT 时间格式
+    
+    VTT: (HH:)MM:SS.mmm
+    SRT: HH:MM:SS,mmm
+    """
+    # 处理可能没有小时的情况
+    parts = vtt_time.split(':')
+    if len(parts) == 2:
+        # MM:SS.mmm 格式
+        m, s_ms = parts
+        h = '00'
+    else:
+        # HH:MM:SS.mmm 格式
+        h, m, s_ms = parts
+    
+    # 将 . 替换为 ,
+    s_ms = s_ms.replace('.', ',')
+    
+    return f"{int(h):02d}:{m}:{s_ms}"
+
+
+def _srt_time_to_vtt(srt_time: str) -> str:
+    """将 SRT 时间格式转换为 VTT 时间格式
+    
+    SRT: HH:MM:SS,mmm
+    VTT: HH:MM:SS.mmm
+    """
+    return srt_time.replace(',', '.')
+
+
 def parse_ass(file_path: str) -> tuple[List[Subtitle], ASSMetadata]:
     """
     解析 ASS 字幕文件
@@ -269,13 +399,15 @@ def detect_subtitle_format(file_path: str) -> str:
         file_path: 文件路径
         
     Returns:
-        'srt', 'ass' 或 'unknown'
+        'srt', 'ass', 'vtt' 或 'unknown'
     """
     ext = Path(file_path).suffix.lower()
     if ext == '.srt':
         return 'srt'
     elif ext in ['.ass', '.ssa']:
         return 'ass'
+    elif ext == '.vtt':
+        return 'vtt'
     return 'unknown'
 
 
@@ -295,6 +427,8 @@ def parse_subtitle(file_path: str) -> tuple[List[Subtitle], Optional[ASSMetadata
         return parse_srt(file_path), None
     elif fmt == 'ass':
         return parse_ass(file_path)
+    elif fmt == 'vtt':
+        return parse_vtt(file_path), None
     else:
         raise ValueError(f"不支持的字幕格式: {file_path}")
 
@@ -315,6 +449,8 @@ def write_subtitle(subtitles: List[Subtitle], output_path: str,
         write_srt(subtitles, output_path)
     elif fmt == 'ass':
         write_ass(subtitles, output_path, metadata)
+    elif fmt == 'vtt':
+        write_vtt(subtitles, output_path)
     else:
         # 默认写为 SRT
         write_srt(subtitles, output_path)

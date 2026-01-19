@@ -38,15 +38,15 @@ def subtitle_translation_section():
     with st.container(border=True):
         st.markdown(f"""
         <p style='font-size: 18px;'>
-        {t("Upload a subtitle file (SRT/ASS) and translate it to your target language.")}
+        {t("Upload a subtitle file (SRT/ASS/VTT) and translate it to your target language.")}
         </p>
         """, unsafe_allow_html=True)
         
         # 文件上传
         uploaded_file = st.file_uploader(
             t("Upload Subtitle File"),
-            type=['srt', 'ass', 'ssa'],
-            help=t("Supported formats: SRT, ASS, SSA")
+            type=['srt', 'ass', 'ssa', 'vtt'],
+            help=t("Supported formats: SRT, ASS, SSA, VTT")
         )
         
         # 语言选择
