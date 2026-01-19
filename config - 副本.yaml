@@ -1,53 +1,35 @@
 # * Settings marked with * are advanced settings that won't appear in the Streamlit page and can only be modified manually in config.py
-# recommend to set in streamlit page
-# -------------------
-# version: "3.0.0"
-# author: "Huanshere"
-# -------------------
-
+version: "2.2.1"
 ## ======================== Basic Settings ======================== ##
-
 display_language: "zh-CN"
 
 # API settings
 api:
-  key: 'your-openai-key'
-  base_url: 'https://api.openai.com'
-  model: 'gpt-5-mini-2025-08-07'
-  llm_support_json: true
-# *Number of LLM multi-threaded accesses, set to 1 if using local LLM
-max_workers: 10
+  key: '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'
+  base_url: 'https://openrouter.ai/api/'
+  model: 'google/gemini-2.0-flash-lite-001'
 
 # Language settings, written into the prompt, can be described in natural language
-target_language: 'zh'
+target_language: '简体中文'
 
 # Whether to use Demucs for vocal separation before transcription
 demucs: true
 
 whisper:
-  # ["large-v3", "large-v3-turbo"]. Note: for zh model will force to use Belle/large-v3
+  # ["medium", "large-v3", "large-v3-turbo"]. Note: for zh model will force to use Belle/large-v3
   model: 'large-v3'
-  # Whisper specified recognition language ISO 639-1
-  language: 'en'
-  detected_language: 'en'
-  # Whisper running mode ["local", "cloud", "elevenlabs"]. Specifies where to run, cloud uses 302.ai API
+  # Whisper specified recognition language [en, zh, ...]
+  language: 'ja'
+  detected_language: 'ja'
+  # Whisper running mode ["local", "cloud"]. Specifies where to run, cloud uses 302.ai API
   runtime: 'local'
   # 302.ai API key
-  whisperX_302_api_key: 'your_302_api_key'
-  # ElevenLabs API key (experimental)
-  elevenlabs_api_key: 'your_elevenlabs_api_key'
+  whisperX_302_api_key: 'YOUR_302_API_KEY'
 
 # Whether to burn subtitles into the video
 burn_subtitles: false
 
 ## ======================== Advanced Settings ======================== ##
-# *🔬 h264_nvenc GPU acceleration for ffmpeg, make sure your GPU supports it
-ffmpeg_gpu: false
-
-# *Youtube settings
-youtube:
-  cookies_path: ''
-
 # *Default resolution for downloading YouTube videos [360, 1080, best]
 ytb_resolution: '1080'
 
@@ -60,6 +42,8 @@ subtitle:
 # *Summary length, set low to 2k if using local LLM
 summary_length: 8000
 
+# *Number of LLM multi-threaded accesses, set to 1 if using local LLM
+max_workers: 4
 # *Maximum number of words for the first rough cut, below 18 will cut too finely affecting translation, above 22 is too long and will make subsequent subtitle splitting difficult to align
 max_split_length: 20
 
@@ -71,7 +55,7 @@ pause_before_translate: false
 
 ## ======================== Dubbing Settings ======================== ##
 # TTS selection [sf_fish_tts, openai_tts, gpt_sovits, azure_tts, fish_tts, edge_tts, custom_tts]
-tts_method: 'openai_tts'
+tts_method: 'gpt_sovits'
 
 # SiliconFlow FishTTS
 sf_fish_tts:
@@ -116,9 +100,6 @@ gpt_sovits:
   character: 'Huanyuv2'
   refer_mode: 3
 
-f5tts:
-  302_api: 'YOUR_302_API_KEY'
-
 # *Audio speed range
 speed_factor:
   min: 1
@@ -130,12 +111,15 @@ min_subtitle_duration: 2.5 # Minimum subtitle duration, will be forcibly extende
 min_trim_duration: 3.5 # Subtitles shorter than this value won't be split
 tolerance: 1.5 # Allowed extension time to the next subtitle
 
+# Volume settings
+dub_volume: 1.5  # *Dubbed audio volume (1.5 = 150%, most original dubbing audio is relatively quiet)
 
 
 
 
-## ======================== Additional settings ======================== ##
 
+
+## ======================== Additional settings 请勿修改======================== ##
 # Whisper model directory
 model_dir: './_model_cache'
 
@@ -154,6 +138,17 @@ allowed_audio_formats:
 - 'mp3'
 - 'flac'
 - 'm4a'
+
+# LLMs that support returning JSON format
+llm_support_json:
+- 'gpt-4o'
+- 'gpt-4o-mini'
+- 'gemini-2.0-flash-exp'
+
+# have problems
+# - 'Qwen/Qwen2.5-72B-Instruct'
+# - 'Qwen/Qwen2.5-Coder-32B-Instruct'
+# - 'Qwen/Qwen2.5-Chat-72B-Instruct-128K'
 
 # Spacy models
 spacy_model_map:
